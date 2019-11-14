@@ -9,13 +9,16 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 
 public class Server { 
 	private Socket _socket;
 	private ServerSocket server_socket;
 	private int _port_number;
+	private SimpleDateFormat _date;
 	
 	private static ArrayList<Socket> client_list = new ArrayList<Socket>();
 	
@@ -29,6 +32,8 @@ public class Server {
 			server_socket = new ServerSocket(_port_number);
 			 
 			System.out.println("Server is opened: " + server_socket);
+			System.out.println(_date.format(new Date()));
+			System.out.println("**********************************************");
 			
 			SendingServer send = new SendingServer();
 			send.start();
@@ -37,7 +42,7 @@ public class Server {
 			while (true) {
 				_socket = server_socket.accept();
 				
-				System.out.println("A new client's accepted!" + _socket);
+				System.out.println("A new client's accepted!" + _socket.getInetAddress() + _socket.getPort());
 				System.out.println("Adding this client to client list");
 				
 				client_list.add(_socket);
@@ -65,7 +70,7 @@ public class Server {
 			try {
 				receive = new DataInputStream(_socket.getInputStream());
 				while (true) {
-					byte message = receive.readByte();
+					String message = receive.readUTF();
 					System.out.println(message);
 					
 //					if (message.substring(message.indexOf(": ") + 2).equalsIgnoreCase("logout")) {
@@ -75,12 +80,12 @@ public class Server {
 //						continue;
 //					}
 					
-//					for (Socket socket : client_list) {
-//						if (socket.getPort() == _socket.getPort()) continue;
-//						DataOutputStream send = new DataOutputStream(socket.getOutputStream());
-//						send.writeUTF(message);
-//						send.flush();
-//					}
+					for (Socket socket : client_list) {
+						if (socket.getPort() == _socket.getPort()) continue;
+						DataOutputStream send = new DataOutputStream(socket.getOutputStream());
+						send.writeUTF(message);
+						send.flush();
+					}
 				}
 			}
 	        

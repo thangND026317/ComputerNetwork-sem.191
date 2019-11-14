@@ -6,15 +6,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
+
 
 public class Client {
 	private String _host;
 	private int _port_number;
 	private Socket _socket;
-	//private 
+	private ServerSocket _serversocket;
  
 	public Client(String host, int port_number) {
 		_host = host;
@@ -23,21 +24,23 @@ public class Client {
 	
 	
 	public void execute() {
+		
 		try {
 			System.out.println("Connecting to server ....");
 			
-			_socket = new Socket(_host, _port_number);
+			_socket = new Socket(_host, 6969);
 			
-			System.out.println("Connected to "
-					+ _socket.getInetAddress() +" on port "
-					+ _socket.getPort() + " from port "
-					+ _socket.getLocalPort() + " of "
-					+ _socket.getLocalAddress());
-					
+			System.out.print("Enter your name: ");
+			BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+			String name = input.readLine();
+			
 			System.out.println("\nStart chatting now, type and Enter to send!\n");
+						
+			ReceivingClient receive = new ReceivingClient(_socket);
+			receive.start();
 			
-//			Receiving receive = new Receiving(_socket);
-//			receive.start();
+			SendingClient send = new SendingClient(_socket, name);
+			send.start();
 			
 		}
 		
@@ -50,49 +53,86 @@ public class Client {
 		}
 	}
 	
-	public boolean sendMessage(String message) {
-		try {
-			DataOutputStream send = new DataOutputStream(_socket.getOutputStream());
-			while (true) {
-				//System.out.println(message);
-				send.writeUTF(message);
-				send.flush();
-				return true;
+	private class ReceivingClient extends Thread {
+		private Socket _socket;
+		
+		public ReceivingClient(Socket socket) {
+			_socket = socket;
+		}
+		
+		public void run() {
+			DataInputStream receive = null;
+			try {
+				receive = new DataInputStream(_socket.getInputStream());
+				while (true) {
+					String message = receive.readUTF();
+					System.out.println(message);
+				}
 			}
+	        
+			catch (IOException e) {
+				try {
+					System.err.println(e);
+					_socket.close();
+				}
+				
+				catch (IOException ex) {
+					System.err.println(ex);
+				}
+			}
+			
 		}
-		
-		catch (SocketException e) {
-			System.out.println(e);
-			return false;
-		}
-		
-        catch (IOException e) {
-        	System.out.println(e);
-        	return false;
-        }
-		
+
 	}
 	
-	public String receiveMessage() {
-		String message = "";
-		try {
-			DataInputStream receive = new DataInputStream(_socket.getInputStream());
-			while (true) {
-				message = receive.readUTF();
-				return message;
+	private class SendingClient extends Thread {
+		private Socket _socket;
+		private String _name;
+		
+		public SendingClient(Socket socket, String name) {
+			_socket = socket;
+			_name = name;
+		}
+
+		public void run() {
+			BufferedReader input = null;
+			DataOutputStream send = null;
+			try {
+				input = new BufferedReader(new InputStreamReader(System.in));
+				send = new DataOutputStream(_socket.getOutputStream());
+				while (true) {
+					String new_message = input.readLine();
+					
+					if (new_message.equalsIgnoreCase("logout")) {
+						logout();
+						break;
+					}
+					
+					String message = _name + ": " + new_message;
+					System.out.println(message);
+					send.writeUTF(message);
+					send.flush();
+				}
+			}
+			
+			catch (IOException e) {
+				System.out.println(e);
+				logout();
 			}
 		}
-        
-		catch (SocketException e) {
-			System.out.println(e);
-			return message;
+	   
+	}
+	
+	public void logout() {
+		try {
+			System.out.println("\nLoged out!");
+			_socket.close();
 		}
-		
-        catch (IOException e) {
-        	System.out.println(e);
-        	return message;
-        }
-		
+
+		catch (IOException e) {
+			System.err.println(e);
+			return;
+		}
 	}
 	
 	public int signIn(String username, String password) {
@@ -107,7 +147,7 @@ public class Client {
 		} 
 		
 		catch (IOException e) {
-			System.out.println(e);
+			System.err.println(e);
 			return 0;
 		}
 			
@@ -125,44 +165,34 @@ public class Client {
 		} 
 		
 		catch (IOException e) {
-			System.out.println(e);
+			System.err.println(e);
 			return 0;
 		}
-			
 	}
 	
-	public void logout() {
+	public int chatTo(String username, String ip, int port) {
 		try {
-			System.out.println("\n\nLogged off!");
-			_socket.close();
-		}
-
+			DataInputStream inStream = new DataInputStream(_socket.getInputStream());
+			DataOutputStream outStream = new DataOutputStream(_socket.getOutputStream());
+			
+			
+			outStream.writeUTF("chatTo@" + username + "@" + ip + "@" + port);		
+			
+			return inStream.readInt();
+		} 
+		
 		catch (IOException e) {
-			System.out.println(e);
-			return;
+			System.err.println(e);
+			return 0;
 		}
 	}
-	
-	//TODO: send file
-	
-	
-	//TODO: receive file
 
-//************************** Demo *********************************
+//********************************** Demo **********************************
 	public static void main(String args[]) throws IOException {
 		
-		final int port_number = 5000;
-		Client client = new Client(InetAddress.getLocalHost().getHostAddress(), port_number);
-		
-		BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+		final int port_number = 6969;
+		Client client = new Client(InetAddress.getLocalHost().toString(), port_number);
 		client.execute();
-		
-		client.sendMessage(input.readLine());
-		
-		System.out.println(client.receiveMessage());
-		
-		//client.logout();
 
 	}
 }
-
