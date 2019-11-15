@@ -29,8 +29,9 @@ public class FileClient{
 		//Initialize socket
 		Socket socket = new Socket("169.254.170.238", 5000);
 		
-		String directory = "D:\\Programming\\Eclipse Project\\Computer Network - Sem. 191\\ChatOneToOne\\Client";
+		String directory = "D:\\Programming\\Eclipse Project\\Computer Network - Sem. 191\\Assignment 1\\Client";
 		String fileName = "Tobias Fate - FEED TO WIN.mp4";
+		
 		FileOutputStream fos = new FileOutputStream(directory + "\\" + fileName);
 		BufferedOutputStream bos = new BufferedOutputStream(fos);
 		DataInputStream dis = new DataInputStream(socket.getInputStream());
@@ -41,7 +42,7 @@ public class FileClient{
 		
 		System.out.println("Saving file ...");
 		while((bytesRead = dis.read(contents)) != -1)
-			bos.write(contents, 0, bytesRead); 
+			bos.write(contents, 0, bytesRead);
 
 		bos.flush();
 		bos.close();

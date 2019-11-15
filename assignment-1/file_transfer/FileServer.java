@@ -4,10 +4,9 @@ import java.net.*;
 import java.io.*;
 public class FileServer {
 	
-//	public boolean sendFile(String directory, String fileName) {
+//	public void sendFile(String directory, String fileName) {
 //		try {
 //			File file = new File(directory + "\\" + fileName);
-//			if (file.exists()) return false;
 //			FileInputStream fis = new FileInputStream(file);
 //			BufferedInputStream bis = new BufferedInputStream(fis);
 //			DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
@@ -33,9 +32,9 @@ public class FileServer {
 //			}   
 //
 //			dos.flush();
+//			dos.close();
 //			bis.close();
 //			System.out.println("File sent succesfully!");
-//			return true;
 //		} 
 //		catch (FileNotFoundException e) {
 //			System.out.println(e);
@@ -49,10 +48,12 @@ public class FileServer {
 		//Initialize Sockets
 		System.out.println(InetAddress.getLocalHost().getHostAddress());
 		ServerSocket ssock = new ServerSocket(5000);
+		
+		System.out.println("Server is listenning ...");
 		Socket socket = ssock.accept();
 
 		//Specify the file
-		String directory = "D:\\Programming\\Eclipse Project\\Computer Network - Sem. 191\\ChatOneToOne\\Server";
+		String directory = "D:\\Programming\\Eclipse Project\\Computer Network - Sem. 191\\Assignment 1\\Server";
 		String fileName = "Tobias Fate - FEED TO WIN.mp4";
 		File file = new File(directory + "\\" + fileName);
 
@@ -68,7 +69,6 @@ public class FileServer {
 		long fileLength = file.length(); 
 		long current = 0;
 
-		//long start = System.nanoTime();
 		int size = 2097152; //size = 2 MB
 		while (current != fileLength) { 
 			if (fileLength - current >= size)
@@ -84,6 +84,7 @@ public class FileServer {
 		}   
 
 		dos.flush();
+		dos.close();
 		bis.close();
 		System.out.println("File sent succesfully!");
 		
