@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.Map.Entry;
 
 
 public class Server { 
@@ -17,6 +19,7 @@ public class Server {
 	private ServerSocket server_socket;
 	private int _port_number;
 	private SimpleDateFormat _date;
+	private static boolean isOpen = false;
 	
 	// Hash table for username and password
 	private static HashMap<String, String> _users = new HashMap<String, String>();
@@ -35,13 +38,16 @@ public class Server {
 		try {
 			System.out.println("Server is opening ....\n");
 			server_socket = new ServerSocket(_port_number);
-			 
+			isOpen = true;
+			
 			System.out.println("Server is opened on port " + server_socket.getInetAddress());
 			System.out.println("Time: " + _date.format(new Date()));
 			System.out.println("************************************************");
 			
 			System.out.println("Waiting for a client ....\n");
-			while (true) {
+			while (isOpen) {
+				
+				if (!isOpen) break;
 				_socket = server_socket.accept();
 				
 				System.out.println("A new client's accepted! ");
@@ -54,6 +60,11 @@ public class Server {
 	
 		}
 		
+		catch (SocketException e) {
+			System.out.println("3");
+			System.err.println(e);
+		}
+		
 		catch (IOException e) {
 			System.err.println(e);
 		}
@@ -61,6 +72,7 @@ public class Server {
 
 	private class ReceivingServer extends Thread {
 		private Socket _socket;
+		private boolean isStreaming = false;
 		
 		public ReceivingServer(Socket socket) {
 			_socket = socket;
@@ -70,8 +82,8 @@ public class Server {
 			DataInputStream receive = null;
 			try {
 				receive = new DataInputStream(_socket.getInputStream());
-				
-				while (true) {
+				isStreaming = true;
+				while (isStreaming) {
 					String message = receive.readUTF();
 					String[] request = message.split("@");
 					String result = "";
@@ -81,7 +93,10 @@ public class Server {
 					
 					switch (request[0]) {
 						case "friendlist":
-							Set<String> keys = _userSocket.keySet();
+							Set<String> keys = null;
+							if (request[1].equalsIgnoreCase("all"))
+								keys = _users.keySet();
+							else keys = _userSocket.keySet();
 							String list = String.join("@", keys);
 							System.out.println(list);
 							sending(list, _socket);
@@ -102,6 +117,17 @@ public class Server {
 							sending(request[2] + "@"+ _random_port,_userSocket.get(request[1]));
 							sending("port@" + _random_port++, _socket);
 							break;
+						case "logout":
+							isStreaming = false;
+							String key = "";
+							for(Entry<String, Socket> mapElement : _userSocket.entrySet()) {
+								key = mapElement.getKey();
+								if (_userSocket.get(key) == _socket) {
+									_userSocket.remove(key);
+									break;
+								}
+							}
+							break;
 					}
 				}
 			}
@@ -112,8 +138,9 @@ public class Server {
 					receive.close();
 					_socket.close();
 				}
+				
 				catch (IOException ex) {
-					System.out.println("Server Closed!");
+					System.out.println("Server's closed!");
 		        }
 			}
 			
@@ -129,7 +156,7 @@ public class Server {
 			send.flush();
 		}
 		
-		catch (Exception e) {
+		catch (IOException e) {
 			System.err.println(e);
 		}			
 	}
@@ -137,9 +164,14 @@ public class Server {
 	public void closeServer() {
 		System.out.println("Closing server ....");
 		try {
-			_socket.close();
+			isOpen = false;
+			if (_socket != null) _socket.close();
 			server_socket.close();
 			System.out.println("Server is closed!");
+		}
+		
+		catch (SocketException e) {
+			System.err.println(e);
 		}
 
 		catch (IOException e) {
@@ -158,6 +190,7 @@ public class Server {
 	public String signIn(String username, String password) {
 		if (!_users.containsKey(username)) return "[Server]: Incorrect username!";
 		if (!_users.get(username).equals(password)) return "[Server]: Incorrect password!";
+		if (_userSocket.containsKey(username)) return "[Server]: This username is currently logged in!";
 		return "[Server]: Signed in successfully!";
 	}
 	
@@ -181,7 +214,7 @@ public class Server {
 		return false;
 	}
 //**********************************  END **********************************
-	public static void main(String args[]) throws IOException {
+	public static void main(String args[]) throws IOException, InterruptedException {
 		
 		final int port_number = 6969;
 		System.out.println(InetAddress.getLocalHost());
